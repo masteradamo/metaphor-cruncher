@@ -1,0 +1,162 @@
+from collections import defaultdict as dd
+import numpy as np
+from scipy.stats import hmean
+from scipy.stats.mstats import gmean
+
+wins = ["2","5","BOW"]
+lims = ["20","200"]
+
+fr = '/home/masteradamo/academy/data/TwenteMetaphor/data.csv'
+fw = '/home/masteradamo/academy/data/TwenteMetaphor/'
+fm = '/home/masteradamo/academy/models/Wikipedia/'
+#fd = '/home/masteradamo/academy/models/Wikipedia/' + win + 'x' + win + '/dimensions/'
+#fv = '/home/masteradamo/academy/models/Wikipedia/' + win + 'x' + win + '/vectors/'
+ft = '/home/masteradamo/academy/models/Wikipedia/5x5/wordus.txt'
+
+#means = {x.split("::")[0]:float(x.split("::")[1]) for x in open(fm+'means.txt','r').readlines()}
+#maxes = {x.split("::")[0]:float(x.split("::")[1]) for x in open(fm+'maxes.txt','r').readlines()}
+
+slabs = ["Joint","Harm","Geom","Rati"]
+nlabs = ["L0","L1","L2"]
+xlabs = ["Simp","Indy","Zipped"]
+cols = ["Noun","Verb","type","metaphoricity","meaningfulness","familiarity","dist","nnorm","vnorm","cnorm","mnorm","xnorm","cang","mang","xang",
+"cmean","mmean","xmean","crat","mrat","xrat","cbal","mbal","xbal","carea","marea","xarea","nist","cnang","mnang","xnang",
+"cnmean","mnmean","xnmean","cnrat","mnrat","xnrat","cnbal","mnbal","xnbal","cnarea","mnarea","xnarea",
+"cfrac","mfrac","xfrac","CoM","MoX","AoB","AvB","CvM","CvX","MvX"]
+
+def translater():
+    rt = [x.split("::")[0] for x in open(ft,'r').readlines()]
+    tr = {rt[n]:str(n) for n in range(len(rt))}
+    return tr,rt
+
+def indyer(targs,vecs,lim):
+    sargs = set(targs)
+    secs = [[x[1] for x in sorted([(y[z],z) for z in y],reverse=True) if x[1] in sargs] for y in vecs]
+    hits = set()
+    lim = min(lim,len(targs))
+    dif = 0
+    while len(hits) < lim:
+        dif += max((lim-len(hits))/len(vecs),1)
+        hits.update([x for y in secs for x in y[:dif]])
+    return list(hits)
+
+def spacer(words,lim,fv):
+    vecs = [dd(float) for x in words]
+    totvec = []
+    for n in range(len(words)):
+        for line in open(fv+"/vectors/"+words[n]+".txt",'r'):
+            totvec.append(line.split("::")[0])
+            vecs[n][line.split("::")[0]] = float(line.split("::")[1])
+    totvec = list(set(totvec))
+    allvec = [x for x in totvec if min([y[x] for y in vecs]) > 0]
+    sums = [sum([x[y] for y in allvec]) for x in vecs]
+    norms = [np.sqrt(sum([x[y]**2 for y in allvec])) for x in vecs]
+    elones = [{y:vecs[x][y]/sums[x] for y in allvec} for x in range(len(vecs))]
+    eltwos = [{y:vecs[x][y]/norms[x] for y in allvec} for x in range(len(vecs))]
+    cats = [[[],[],[],[]] for x in range(3)] #joint, harm, goem, absd
+    necs = [vecs,elones,eltwos]
+    for n in range(len(necs)):
+        for item in allvec:
+            vals = [x[item] for x in necs[n]]
+            cats[n][0].append((sum(vals),item))
+            cats[n][1].append((hmean(vals),item))
+            cats[n][2].append((gmean(vals),item))
+            cats[n][3].append((sum(vals)/max(0.00001,np.std(vals)),item))
+#            cats[n][3].append((sum(vals)/max(0.00001,abs(vals[0]-vals[1])),item))
+#    for z in range(len(cats)):
+#        for y in range(len(cats[z])):
+#            print "CAT",z,y,len(cats[z][y]),cats[z][y][0],sorted(cats[z][y],reverse=True)[:lim]
+    cats = [[[x[1] for x in sorted(y,reverse=True)[:lim]] for y in z] for z in cats]
+    simp = [x[1] for x in sorted([((sum([x[y] for x in vecs]),y)) for y in totvec],reverse=True)[:lim]]
+    indy = indyer(totvec,vecs,lim)
+    zipy = indyer(allvec,vecs,lim)
+    print "INDS",len(simp),len(indy),len(zipy)
+    return cats,simp,indy,zipy,vecs
+
+def normer(vec):
+#    print "NORMING",vec
+    return np.sqrt(sum([x**2 for x in vec]))
+
+def dister(a,b):
+    return np.sqrt(sum([(a[x]-b[x])**2 for x in range(len(a))]))
+
+def angler(pts,ver):
+    a,b = [[x[y]-ver[y] for y in range(len(x))] for x in pts]
+    return sum([a[x]*b[x] for x in range(len(a))])/(normer(a)*normer(b))
+
+def permer(a,b,c):
+    p = (a+b+c)/2
+    return np.sqrt(p*(p-a)*(p-b)*(p-c))
+
+def corer(vecs,space,means,maxes):
+#    print "SPACE",space
+    lecs = [[x[y] for y in space] for x in vecs]
+    meav = [means[x] for x in space]
+    maxv = [maxes[x] for x in space]
+    mv = np.mean(meav)
+    cenv = [mv for x in meav]
+#    print "MEAV",meav
+    norms = [normer(x) for x in lecs+[cenv,meav,maxv]]
+#    print "LENS",len(norms),len(lecs[0]),len(lecs[1]),len(cenv),len(meav),len(maxv),norms
+    necs = [[lecs+[cenv,meav,maxv]][0][x]/norms[x] for x in range(len(norms))]
+    dists = [dister(lecs[0],lecs[1])] + [[dister(x,y) for x in lecs] for y in [cenv,meav,maxv]]
+    angs = [angler(lecs,x) for x in [cenv,meav,maxv]]
+    mats = [np.mean(x) for x in dists[1:]]
+    rats = [min(x)/max(x) for x in dists[1:]]
+    fats = [x[0]/x[1] for x in dists[1:]]
+#    print "DISTS",dists
+    perms = [permer(dists[0],x[0],x[1]) for x in dists[1:]]
+#    print "PERMS",perms
+    nists = [dister(necs[0],necs[1])] + [[dister(x,y) for x in necs[:2]] for y in necs[2:]]
+    nangs = [angler(necs[:2],x) for x in necs[2:]]
+    nmats = [np.mean(x) for x in nists[1:]]
+    nrats = [min(x)/max(x) for x in nists[1:]]
+    nfats = [x[0]/x[1] for x in nists[1:]]
+    nerms = [permer(nists[0],x[0],x[1]) for x in nists[1:]]
+    fracs = [np.mean(norms[:2])/x for x in norms[2:]]
+    orig = [0.0]*len(lecs[0])
+    verts = [angler(lecs,orig),angler([cenv,meav],orig),angler([cenv,maxv],orig),angler([meav,maxv],orig)]
+    return [dists[0]] + norms + angs + mats + rats + fats + perms + [nists[0]] + nangs + nmats + nrats + nfats + nerms + fracs + [norms[2]/norms[3],norms[3]/norms[4],norms[0]/norms[1]] + verts
+
+def writer(win,lim,outs):
+    for m in range(3):
+        for n in range(len(outs[m])):
+            ftw = open(fw+win+"x"+lim+"x"+slabs[n]+"x"+nlabs[m]+".txt",'w')
+            ftw.write(",".join(cols) + "\n")
+            print "OUTS",outs[m][n]
+            ftw.write("\n".join([",".join(x) for x in outs[m][n]]))
+    for n in [3,2,1]:
+        ftw = open(fw+win+"x"+lim+"x"+xlabs[-n]+".txt",'w')
+        ftw.write(",".join(cols) + "\n")
+        ftw.write("\n".join([",".join(x) for x in outs[-n]]))
+
+def runner():
+    data = [x[:-1].split(",") for x in open(fr,'r').readlines()]
+    for win in wins:
+        fv = fm + win + "x" + win
+        means = {x.split("::")[0]:float(x.split("::")[1]) for x in open(fv+'/means.txt','r').readlines()}
+        maxes = {x.split("::")[0]:float(x.split("::")[1]) for x in open(fv+'/maxes.txt','r').readlines()}
+        print win + "x" + win + " DICTIONAIRIES BUILT"
+        for lim in lims:
+            out = [[[],[],[],[]] for x in range(3)] + [[],[],[]]
+#            data = [[x.split(",") for x in y] for y in open(fr,'r').readlines()]
+            for line in data[1:]:
+                spaces = spacer([tr[x] for x in line[:2]],int(lim),fv)
+#                print spaces[:-1]
+                for m in range(3):
+                    for n in range(len(spaces[0][m])):
+                        pends = ["%.4f" % x for x in corer(spaces[-1],spaces[0][m][n],means,maxes)]
+                        print "PEND",line[:2],pends
+                        out[m][n].append(line[:6] + pends)
+                for n in [4,3,2]:
+#                    print "PEND",line[:2],pends
+                    pends = ["%.4f" % x for x in corer(spaces[-1],spaces[-n],means,maxes)]
+                    print "PEND",line[:2],pends
+                    out[-n+1].append(line[:6] + pends)
+                print ""
+            writer(win,lim,out)
+            print "WROTE",lim+"x"+win
+
+tr,rt = translater()
+print "TRANSLATERS BUILT"
+runner()

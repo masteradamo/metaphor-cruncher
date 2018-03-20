@@ -1,0 +1,8 @@
+fr = '/home/masteradamo/academy/QueenMerrily/metamatic/data/metaphor/TwenteMetaIndy.csv'
+fw = '/home/masteradamo/academy/data/TwenteMetaphor/data.csv'
+
+ftw = open(fw,'w')
+ftw.write("verb,noun,type,metaphoricity,meaningfulness,familiarity\n")
+for line in open(fr,'r').readlines()[1:]:
+    line = line.split(",")
+    ftw.write(",".join([line[0],line[2].split()[0],line[1],line[3],line[4],line[5]]) + "\n")

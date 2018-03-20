@@ -1,0 +1,56 @@
+fr = '/home/masteradamo/academy/data/TwenteMetaphor/data.csv'
+
+from sklearn.linear_model import LogisticRegression as logre
+from sklearn.linear_model import LinearRegression as linre
+from scipy.stats import pearsonr as pears
+import numpy as np
+
+logmo = logre(multi_class='multinomial',solver='lbfgs')
+linmo = linre()
+classes = {'literal':1.0,'conventional':2.0,'novel':3.0,'unrelated':4.0}
+
+def transposer(data,ytar):
+    yout,xout = [],[]
+    for row in data:
+        yout.append(row[ytar])
+        xout.append(row[:ytar]+row[ytar+1:])
+    return yout,xout
+
+def logger(data,pt):
+    hits = 0.0
+    yes,xes = transposer(data,pt)
+    print len(yes),len(xes),yes[:5],xes[:5]
+    for n in range(len(yes)):
+#        print "N",n,len(yes[:n]+yes[n+1:]),len(xes[:n]+xes[n+1:])
+        logmo.fit(xes[:n]+xes[n+1:],yes[:n]+yes[n+1:])
+        hits += float(logmo.predict(np.array(xes[n]).reshape(1,-1))==yes[n])
+    return hits/len(yes)
+
+def liner(data,pt):
+    yes,xes = transposer(data,pt)
+    pred = []
+    for n in range(len(yes)):
+        linmo.fit(xes[:n]+xes[n+1:],yes[:n]+yes[n+1:])
+        pred.append(linmo.predict(np.array(xes[n]).reshape(1,-1))[0])
+#    print "PRED",yes,pred
+    if len(xes[0]) == 1:
+        print "PEARS",pears([x for y in xes for x in y],yes)
+    return pears(yes,pred)[0]
+
+def opener(ftr):
+    data = [[classes[x[2]]] + [float(y) for y in x[3:]] for x in ftr[1:229]]
+    print len(transposer(data,0))
+    out = [[logger(data,0)] + [liner(data,x) for x in range(1,len(data[0]))]]
+    for n in range(1,len(data[0])):
+        print "N2",n,data[0][0],data[0][n]
+        logi = [logger([[x[0]]+[x[n]] for x in data],0)]
+        lini = [liner([[x[y]]+[x[n]] for x in data],0) for y in range(n,len(data[0]))]
+        out.append(logi+lini)
+#         out.append([logger([[x[0]+x[n]] for x in data],0) + [liner([[y[x]+y[z]] for y in data]) for z in range(n,len(data[0]))])
+    for line in out:
+        print ["%.3f" % x for x in line]
+    clata = [[x[0]] + x[2:] for x in data]
+#    print "class by meaningfulness and familiarity:","%.3f" % logger(clata,0)
+
+ftr = [x.split(",") for x in open(fr,'r').readlines()]
+opener(ftr)

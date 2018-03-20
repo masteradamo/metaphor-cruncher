@@ -1,0 +1,36 @@
+import numpy as np
+
+fr = '/home/masteradamo/academy/data/TwenteMetaphor/'
+
+wins = ["2","5","BOW"]
+lims = ["20","200"]
+spaces = ["Joint","Harm","Geom","Rati","Simp","Indy","Zipped"]
+xpaces = ["L0","L1","L2"]
+
+def rewriter(data,scri):
+    ftw = open(fr+"x".join(scri)+"Norm.txt",'w')
+    ftw.write(",".join(data[0]))
+    vals = [[] for x in data[0][3:]]
+    for line in data[1:]:
+        if line[3] != "":
+            for n in range(len(vals)):
+                vals[n].append(float(line[n+3]))
+    means = [np.mean(x) for x in vals]
+    stds = [np.std(x) for x in vals]
+    ftw.write("\n".join([",".join(y[:3] + ["%.4f" % ((float(y[x+3])-means[x])/stds[x]) for x in range(len(means))]) for y in data[1:229]]))
+    print "WROTE",scri
+
+def dataer():
+    for wi in wins:
+        for li in lims:
+            for sp in spaces[:4]:
+                for xp in xpaces:
+                    scri = [wi,li,sp,xp]
+                    data = [x.split(",") for x in open(fr+"x".join(scri)+".txt",'r').readlines()]
+                    rewriter(data,scri)
+            for sp in spaces[4:]:
+                scri = [wi,li,sp]
+                data = [x.split(",") for x in open(fr+"x".join(scri)+".txt",'r').readlines()]
+                rewriter(data,scri)
+
+dataer()

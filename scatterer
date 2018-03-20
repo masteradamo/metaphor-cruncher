@@ -1,0 +1,17 @@
+fr = '/home/masteradamo/academy/data/TwenteMetaphor/data.csv'
+
+def transposer(data,ytar):
+    yout,xout = [],[]
+    for row in data:
+        yout.append(row[ytar])
+        xout.append(row[:ytar]+row[ytar+1:])
+    return yout,xout
+
+def opener(ftr):
+    data = [[x[2][0]] + [float(y) for y in x[4:]] for x in ftr[1:229]]
+    print "::".join([" ".join(["%.3f" % item[1],"%.3f" % item[2],item[0]]) for item in data])
+#    for item in data:
+#        print " ".join(["%.3f" % item[1],"%.3f" % item[2],item[0]])
+
+ftr = [x.split(",") for x in open(fr,'r').readlines()]
+opener(ftr)

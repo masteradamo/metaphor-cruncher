@@ -1,0 +1,123 @@
+from scipy.stats import pearsonr as pears
+from sklearn.linear_model import LinearRegression as LR
+import numpy as np
+
+fr = '/home/masteradamo/academy/data/TwenteMetaphor/'
+
+wins = ["2","5","BOW"]
+lims = ["20","200"]
+spaces = ["Joint","Harm","Geom","Rati","Simp","Indy","Zipped"]
+xpaces = ["L0","L1","L2"]
+mets = ["meaningfulness","metaporicity","familiarity"]
+
+mod = LR()
+
+def singler(info):
+    print "INFO",info
+    ftr = open(fr+"x".join(info)+".txt",'r').readlines()
+    labs = ["meaingfulness","familiarity"] + ftr[0].split(",")[6:]
+    xes = [[] for x in labs]
+    for line in ftr[1:229]:
+        line = line.split(",")
+        xes[0].append(float(line[4]))
+        xes[1].append(float(line[5]))
+#        for n in range(len(yes)):
+#            yes[n].append(float(line[n+3]))
+        for n in range(2,len(xes)):
+            xes[n].append(float(line[n+4]))
+    yes = [float(x.split(",")[3]) for x in ftr[1:229]]
+    return xes,yes
+
+def oner(info,labs):
+    xes,yes = singler(info)
+    print "x".join(info)
+    feats = [y[1] for y in sorted ([(abs(pears(xes[x],yes)[0]),x) for x in range(len(xes))],reverse=True)]
+    print "FEATS",len(feats),len(xes),len(yes)
+#    for n in range(len(mets)):
+#        feats.append([y[1] for y in sorted ([(abs(pears(xes[x],yes[n])[0]),x) for x in range(len(xes))],reverse=True)])
+    return feats
+
+def refiner(feat,ext,fac,xes):
+    res = [[x[feat[0]]] for x in xes]
+    tal = [feat[0]]
+    pt = 1
+    while len(tal) < ext and pt < len(xes[0]):
+        qes = [x[pt] for x in xes]
+        mod.fit(res,qes)
+#        print "SCORE",pt,mod.score(res,qes)
+        if 1/(1-mod.score(res,qes)) < fac:
+            for n in range(len(res)):
+                res[n].append(xes[n][pt])
+            tal.append(feat[pt])
+#            print "ACCEPT"
+#        else:
+#            print "REJECT"
+        pt += 1
+    return res,tal
+
+def multier(info):
+    ftr = open(fr+"x".join(info)+"Norm.txt",'r').readlines()
+    xes = [[float(y.split(",")[4])] + [float(x) for x in y.split(",")[5:]] for y in ftr[1:229]]
+    yes = [float(x.split(",")[3]) for x in ftr[1:229]]
+#    yes = [[] for y in mets]
+#    for line in ftr[1:229]:
+#        line = line.split(",")
+#        for n in range(len(yes)):
+#            yes[n].append(float(line[n+3]))
+    return xes,yes
+
+def looer(xes,yes):
+#    print "LOO",len(xes),len(yes)
+    preds = []
+    for n in range(len(yes)):
+        mod.fit(xes[:n]+xes[n+1:],yes[:n]+yes[n+1:])
+        preds.append(mod.predict(np.array(xes[n]).reshape(1,-1))[0])
+    return pears(yes,preds)[0]
+
+def aller(xes,yes):
+    mod.fit(xes,yes)
+    preds = mod.predict(xes)
+    return pears(yes,preds)[0]
+
+def manyer(info):
+    xes,yes = multier(info)
+    print "x".join(info)
+    for n in range(len(mets)):
+        print mets[n]+":","%.3f" % looer(xes,yes[n])
+#        print mets[n]+":","%.3f" % aller(xes,yes[n])
+    print ""
+
+def feater(xes,yes):
+    scores = sorted([(abs(pears(xes,yes[x])[0]),labs[x]) for x in range(len(yes))],reverse=True)
+
+def looper(info,labs,ext,fac):
+    feats = oner(info,labs)
+    xes,yes = multier(info)
+    res,tal = refiner(feats,ext,fac,xes)
+    score = looer(res,yes)
+    print "metaphoricity:","%.3f" % score,[labs[x] for x in tal]
+    return score
+#    for n in range(len(mets)):
+#        res,tal = refiner(feats[n],ext,fac,xes)
+#        print mets[n]+":","%.3f" % looer(res,yes[n]),[labs[x] for x in tal]
+
+def runner():
+    labs = ["meaningfulness","familiarity"] + open(fr + "5x200xSimp.txt",'r').readlines()[0].split(",")[6:]
+    catch = []
+    print "LABS",len(labs),labs
+    for wi in wins:
+        for li in lims:
+            for sp in spaces:
+                info = [wi,li,sp]
+                if sp in spaces[:4]:
+                    for xp in xpaces:
+                        catch.append((looper(info+[xp],labs,10,10),info+[xp]))
+#                        oner(info+[xp],labs)
+#                        manyer(info+[xp])
+                else:
+                     catch.append((looper(info,labs,10,10),info))
+#                     oner(info,labs)
+#                     manyer(info)
+    print [("%.3f" % x[0],"x".join(x[1])) for x in sorted(catch,reverse=True)[:10]]
+
+runner()
